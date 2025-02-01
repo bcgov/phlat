@@ -23,6 +23,9 @@ export default {
   async serviceGetFormFieldsFromProcessData() {
     return appAxios().get(`processdata/column-display-names`);
   },
+  async serviceGetSingleProcessDataByRecordId(id) {
+    return appAxios().get(`processdata/view/${id}`);
+  },
   async servicePutProcessDataById(id, data) {
     return appAxios().put(`processdata/update/${id}`, data);
   },

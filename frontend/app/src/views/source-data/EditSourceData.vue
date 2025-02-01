@@ -32,6 +32,7 @@ export default {
   },
   data: () => ({
     fileName: 'Loading...',
+    countdownupdate: { count: 0, selectedId: null },
     dialog: false,
     isHovering: false,
     search: null,
@@ -145,6 +146,7 @@ export default {
       'updatedProcessData',
       'validateAllStatus',
       'processingProcessData',
+      'singleProcessDataByID',
     ]),
     ...mapState(useFilterDataStore, ['editSourceSelectedFiltersData']),
     ...mapState(usePreferenceDataStore, ['displayColumnsPreferenceData']),
@@ -245,6 +247,7 @@ export default {
       'fetchFormFieldHeaders',
       'updateSingleProcessRecord',
       'updateValidateAll',
+      'fetchProcessDataByRecordId',
     ]),
     ...mapActions(usePreferenceDataStore, [
       'updateUserColumnsDisplayPreference',
@@ -480,6 +483,26 @@ export default {
       }
       this.close();
     },
+    async getProcessDataByRecordId(id) {
+      try {
+        await this.fetchProcessDataByRecordId(id);
+        const data = this.singleProcessDataByID;
+        if (data.id) {
+          const i = this.inputSrcData.findIndex((x) => x.id === id);
+          this.inputSrcData[i] = data;
+        } else {
+          this.addNotification({
+            text: data.message || 'Something went wrong.',
+            type: 'error',
+          });
+        }
+      } catch (error) {
+        this.addNotification({
+          text: error.message || 'Something went wrong',
+          type: 'error',
+        });
+      }
+    },
     async handleRecordSave(selectedItemToEdit) {
       this.loading = true;
       try {
@@ -488,15 +511,25 @@ export default {
           selectedItemToEdit
         );
         const data = this.updatedProcessData;
-
         if (data.id) {
           const i = this.inputSrcData.findIndex(
             (x) => x.id === selectedItemToEdit.id
           );
+          data.rowstatusCode = 'Processing...';
           this.inputSrcData[i] = data;
 
           this.loading = false;
           this.close();
+          this.countdownupdate.count = 10;
+          this.countdownupdate.selectedId = selectedItemToEdit.id;
+          const countdownInterval = setInterval(() => {
+            this.countdownupdate.count -= 1;
+            if (this.countdownupdate.count <= 0) {
+              clearInterval(countdownInterval);
+              this.countdownupdate.selectedId = null;
+              this.getProcessDataByRecordId(selectedItemToEdit.id);
+            }
+          }, 1000);
         } else {
           this.addNotification({
             text: data.message || 'Something went wrong.',
@@ -762,6 +795,14 @@ export default {
           >
             <span class="d-flex align-center">
               {{ item.raw.rowstatusCode }}
+              <div
+                v-if="
+                  countdownupdate.count > 0 &&
+                  countdownupdate.selectedId === item.raw.id
+                "
+              >
+                (Wait {{ countdownupdate.count }}s)
+              </div>
             </span>
             <v-tooltip
               v-if="

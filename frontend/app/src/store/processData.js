@@ -5,6 +5,7 @@ import { applyValidationRules } from '~/utils/validations';
 
 export const useProcessDataStore = defineStore('processdata', {
   state: () => ({
+    singleProcessDataByID: [],
     processData: [],
     totalItems: 0,
     updatedProcessData: [],
@@ -23,6 +24,24 @@ export const useProcessDataStore = defineStore('processdata', {
         this.processData = data;
       } catch (error) {
         console.log('Something went wrong. (DJQSUU#396)', error); // eslint-disable-line no-console
+      }
+    },
+    async fetchProcessDataByRecordId(id) {
+      this.processingProcessData = true;
+      try {
+        const { data } =
+          await processDataService.serviceGetSingleProcessDataByRecordId(id);
+        this.singleProcessDataByID = data.data;
+      } catch (error) {
+        console.log('Something went wrong. (OTGHAD#8636)', error); // eslint-disable-line no-console
+        const notificationStore = useNotificationStore();
+        notificationStore.addNotification({
+          text: error.response.data.message || 'Something went wrong',
+          type: error.response.data.status != 200 ? 'error' : 'success',
+        });
+      } finally {
+        // This will execute regardless of the try/catch outcome
+        this.processingProcessData = false;
       }
     },
     async fetchProcessDataByControlId(id, filter = {}, pagination) {
@@ -105,7 +124,9 @@ export const useProcessDataStore = defineStore('processdata', {
         if (data.data) {
           this.updatedProcessData = data.data;
           notificationStore.addNotification({
-            text: data.message || 'Record updated successfully.nn',
+            text:
+              data.message + ' (Retrieving the details may take some time.)' ||
+              'Record updated successfully. (Retrieving the details may take some time.)',
             type: data.status || 'warning',
           });
         } else {
